@@ -25,16 +25,19 @@ def main():
         #    Bölgelere göre grupla, satışları topla, en yüksek olanın adını al.
         en_cok_satan_bolge = data.groupby('Bölge')['Satış_Adedi'].sum().idxmax()
 
-        # 6. Analiz: Memnuniyet oranları (%100 üzerinden)
+        # Ürün adlarını JSON için listeye çevir
+        ürün_adi = data['Ürün_Adı'].groupby(data['Ürün_Adı']).size().index.tolist()
+        # Bölge adlarını JSON için listeye çevir
+        bölge_adi = data['Bölge'].groupby(data['Bölge']).size().index.tolist()
+        
+
+        # 6. Analiz: Her Ürünün Memnuniyet oranları ayrı ayrı (%100 üzerinden)
         #    Bu, 'Series' hatasını düzelten ve mantığınızı doğru uygulayan koddur.
-        memnuniyet_oranlari = (
-            data['Müşteri_Memnuniyeti']         # 'Müşteri_Memnuniyeti' sütununu seç
-            .value_counts(normalize=True)    # Oranları hesapla (örn: Yüksek: 0.5)
-            .mul(100)                        # 100 ile çarparak yüzdeye çevir
-            .round(2)                        # 2 ondalık basamağa yuvarla
-            .to_dict()                       # JSON için bir Python SÖZLÜĞE çevir
-        )
-        # Sonuç: {'Yüksek': 50.0, 'Orta': 30.0, 'Düşük': 20.0} (Bu artık bir 'Series' değil!)
+        # her ürün için Müşteri_Memnuniyeti alanındaki yüksek orta düşük alanlarını sayısal veriye çevirmemiz gerekli
+        # yüzdesini almalıyız her ürün için
+        memnuniyet_oranlari = {}
+        for memnuniyet in data["Müşteri_Memnuniyeti"].unique():
+            memnuniyet_oranlari[memnuniyet] = data[data["Müşteri_Memnuniyeti"] == memnuniyet].groupby("Ürün_Adı")["Müşteri_Memnuniyeti"].count().mul(10).mean()
 
         # 7. React Tablosu için tüm veriyi hazırla
         data_for_json = data.to_dict('records')
@@ -44,7 +47,9 @@ def main():
             "analysis_result": {
                 "en_cok_satan_urun": en_cok_satan_urun,
                 "en_cok_satan_bolge": en_cok_satan_bolge,
-                "memnuniyet_oranlari_yuzde": memnuniyet_oranlari # (Artık içi 'dict', json.dumps'a gerek YOK)
+                "memnuniyet_oranlari_yuzde": memnuniyet_oranlari,
+                "ürün_adi": ürün_adi,
+                "bölge_adi": bölge_adi
             },
             "data_table": data_for_json 
         }
